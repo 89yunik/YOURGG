@@ -11,7 +11,7 @@ namespace YOURGG.Services
         public RiotApiService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _riotApiKey = configuration["RiotApiKey"];
+            _riotApiKey = configuration["RiotApiKey"] ?? throw new ArgumentNullException("RiotApiKey must be provided.");
         }
 
         public async Task<string?> GetPuuidByRiotIdAsync(string gameName, string tagLine)
