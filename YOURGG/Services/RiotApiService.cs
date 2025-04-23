@@ -16,17 +16,17 @@ namespace YOURGG.Services
 
         public async Task<string?> GetPuuidByRiotIdAsync(string gameName, string tagLine)
         {
-            var requestUrl = $"{RiotAccountApiUrl}/{gameName}/{tagLine}";
+            string requestUrl = $"{RiotAccountApiUrl}/{gameName}/{tagLine}";
 
-            var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
             request.Headers.Add("X-Riot-Token", _riotApiKey);
 
-            var response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            var result = await response.Content.ReadFromJsonAsync<RiotAccountResponse>();
+            RiotAccountResponse? result = await response.Content.ReadFromJsonAsync<RiotAccountResponse>();
             return result?.puuid;
         }
 
