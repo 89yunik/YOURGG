@@ -4,11 +4,11 @@ namespace YOURGG.Services
 {
     public class RiotApiService
     {
-        private readonly HttpClient _http;
+        private readonly HttpClient _httpClient;
 
-        public RiotApiService(HttpClient http)
+        public RiotApiService(HttpClient httpClient)
         {
-            _http = http;
+            _httpClient = httpClient;
         }
 
         public async Task<MatchDetailViewModel?> GetLatestMatchDetailAsync(string summonerName)
