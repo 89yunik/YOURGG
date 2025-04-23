@@ -1,0 +1,8 @@
+﻿@model YOURGG.Models.MatchDetailViewModel
+
+<h2>@Model.SummonerName 님의 최근 경기</h2>
+<p>챔피언: @Model.ChampionName</p>
+<p>결과: @Model.Result</p>
+<p>K/D/A: @Model.Kills / @Model.Deaths / @Model.Assists</p>
+<p>게임 모드: @Model.GameMode</p>
+<a href="@Url.Action("Search", "Summoner")">다시 검색하기</a>
