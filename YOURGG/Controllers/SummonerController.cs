@@ -20,23 +20,11 @@ public class SummonerController : Controller
     [HttpPost]
     public async Task<IActionResult> MatchDetail(string summonerName)
     {
-        var matchDetail = await _riotApiService.GetLatestMatchDetailAsync(summonerName);
+        var matchDetail = await _riotApiService.GetLatestLiftMatchDetailBySummonerNameAsync(summonerName);
 
         if (matchDetail == null)
             return NotFound();
 
         return View(matchDetail);
-    }
-
-    [HttpGet("info")]
-    public async Task<IActionResult> GetSummonerInfo(string gameName, string tagLine)
-    {
-        string? puuid = await _riotApiService.GetPuuidByRiotIdAsync(gameName, tagLine);
-        if (puuid != null) 
-        {
-            List<string>? matchIds = await _riotApiService.GetMatchIdsByRiotPuuid(puuid, 1);
-            return Ok(matchIds);
-        }
-        else return NotFound("Summoner not found or puuid is null.");
     }
 }
