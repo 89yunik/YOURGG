@@ -55,10 +55,7 @@ namespace YOURGG.Services
 
             foreach (var matchIds in results)
             {
-                if (matchIds != null && matchIds.Length > 0)
-                {
-                    allMatchIds.AddRange(matchIds);
-                }
+                if (matchIds != null && matchIds.Length > 0) allMatchIds.AddRange(matchIds);
             }
 
             string? latestMatchId = allMatchIds.Distinct().OrderByDescending(id => id).FirstOrDefault();
