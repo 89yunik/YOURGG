@@ -20,7 +20,7 @@ public class SummonerController : Controller
     [HttpPost]
     public async Task<IActionResult> MatchDetail(string summonerName)
     {
-        var matchDetail = await _riotApiService.GetLatestMatchDetailAsync(summonerName);
+        var matchDetail = await _riotApiService.GetLatestLiftMatchDetailBySummonerNameAsync(summonerName);
 
         if (matchDetail == null)
             return NotFound();

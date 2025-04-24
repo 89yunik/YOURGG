@@ -5,6 +5,7 @@ namespace YOURGG.Models
         public required string SummonerName { get; set; }
         public required string ChampionName { get; set; }
         public required string Result { get; set; }
+        public required string Role { get; set; }
         public required int Kills { get; set; }
         public required int Deaths { get; set; }
         public required int Assists { get; set; }
