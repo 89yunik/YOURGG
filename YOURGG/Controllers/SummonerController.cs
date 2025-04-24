@@ -27,4 +27,11 @@ public class SummonerController : Controller
 
         return View(matchDetail);
     }
+
+    [HttpGet("info")]
+    public async Task<IActionResult> GetSummonerInfo(string gameName, string tagLine)
+    {
+        var puuid = await _riotApiService.GetPuuidByRiotIdAsync(gameName, tagLine);
+        return Ok(puuid); // ← JSON 반환
+    }
 }
