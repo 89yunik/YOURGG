@@ -1,21 +1,31 @@
 using System.Text.Json;
 using YOURGG.Models;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace YOURGG.Services
 {
     public class RiotApiService
     {
         private readonly HttpClient _httpClient;
+        private readonly IMemoryCache _cache;
         private readonly string _riotApiKey;
 
-        public RiotApiService(HttpClient httpClient, IConfiguration configuration)
+        public RiotApiService(HttpClient httpClient, IConfiguration configuration, IMemoryCache cache)
         {
             _httpClient = httpClient;
+            _cache = cache;
             _riotApiKey = configuration["RiotApiKey"] ?? throw new ArgumentNullException("RiotApiKey must be provided.");
         }
         public async Task<MatchDetailResult> GetLatestLiftMatchDetailBySummonerNameAsync(string summonerName)
         {
             MatchDetailResult result = new MatchDetailResult();
+            if (_cache.TryGetValue(summonerName, out MatchDetailViewModel? cachedMatch))
+            {
+                result.IsSummonerFound = true;
+                result.IsMatchFound = true;
+                result.MatchDetail = cachedMatch;
+                return result;
+            }
 
             // Riot API Key
             string riotApiBaseUrl = "https://asia.api.riotgames.com";
@@ -53,14 +63,14 @@ namespace YOURGG.Services
             string getLatestSummonersLiftMatchDetailUrl = $"{riotApiBaseUrl}/lol/match/v5/matches/{latestMatchId}";
             JsonElement match = await _httpClient.GetFromJsonAsync<JsonElement>(getLatestSummonersLiftMatchDetailUrl);
 
-            JsonElement matchDetail = match.GetProperty("info");
+            JsonElement rawMatchDetail = match.GetProperty("info");
 
-            JsonElement.ArrayEnumerator participants = matchDetail.GetProperty("participants").EnumerateArray();
+            JsonElement.ArrayEnumerator participants = rawMatchDetail.GetProperty("participants").EnumerateArray();
 
             JsonElement summonerData = participants.First(p => p.GetProperty("puuid").GetString() == puuid);
 
             result.IsMatchFound = true;
-            result.MatchDetail = new MatchDetailViewModel
+            MatchDetailViewModel matchDetail = new MatchDetailViewModel
             {
                 SummonerName = summonerName,
                 ChampionName = summonerData.GetProperty("championName").GetString(),
@@ -69,8 +79,11 @@ namespace YOURGG.Services
                 Kills = summonerData.GetProperty("kills").GetInt32(),
                 Deaths = summonerData.GetProperty("deaths").GetInt32(),
                 Assists = summonerData.GetProperty("assists").GetInt32(),
-                GameMode = matchDetail.GetProperty("gameMode").GetString()
+                GameMode = rawMatchDetail.GetProperty("gameMode").GetString()
             };
+
+            result.MatchDetail = matchDetail;
+            _cache.Set(summonerName, matchDetail, TimeSpan.FromMinutes(5)); // 캐시 만료 시간 설정
 
             return result;
         }
