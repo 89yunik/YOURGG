@@ -36,4 +36,10 @@ public class SummonerController : Controller
 
         return View(result.MatchDetail);
     }
+    
+    [HttpGet]
+    public IActionResult Error()
+    {
+        return View();
+    }
 }
