@@ -1,16 +1,9 @@
 ﻿@model YOURGG.Models.MatchDetailViewModel
 
-@if (ViewBag.ErrorMessage != null)
-{
-    <p>@ViewBag.ErrorMessage</p>
-    <a href="@Url.Action("Search", "Summoner")">홈으로 이동</a>
-}
-else
-{
-    <h2>@Model.SummonerName 님의 최근 경기</h2>
-    <p>챔피언: @Model.ChampionName</p>
-    <p>포지션: @Model.Role</p>
-    <p>결과: @Model.Result</p>
-    <p>K/D/A: @Model.Kills / @Model.Deaths / @Model.Assists</p>
-    <p>게임 모드: @Model.GameMode</p>
-}
+<h2>@Model.SummonerName 님의 최근 경기</h2>
+<p>챔피언: @Model.ChampionName</p>
+<p>포지션: @Model.Role</p>
+<p>결과: @Model.Result</p>
+<p>K/D/A: @Model.Kills / @Model.Deaths / @Model.Assists</p>
+<p>게임 모드: @Model.GameMode</p>
+<a href="@Url.Action("Search", "Summoner")">다시 검색하기</a>
