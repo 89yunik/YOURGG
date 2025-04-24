@@ -47,9 +47,14 @@ namespace YOURGG.Services
             int count = 1;
             int[] queueIds = [420, 440, 400];
             string getMatchIdsByRiotPuuidUrl = $"{riotApiBaseUrl}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}";
-            foreach (int queueId in queueIds){
-                string[]? matchIds = await _httpClient.GetFromJsonAsync<string[]>(getMatchIdsByRiotPuuidUrl+$"&queue={queueId}");
-                
+            
+            var tasks = queueIds.Select(queueId =>
+                _httpClient.GetFromJsonAsync<string[]>($"{getMatchIdsByRiotPuuidUrl}&queue={queueId}")
+            ).ToList();
+            var results = await Task.WhenAll(tasks);
+
+            foreach (var matchIds in results)
+            {
                 if (matchIds != null && matchIds.Length > 0)
                 {
                     allMatchIds.AddRange(matchIds);
