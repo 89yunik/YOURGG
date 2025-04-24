@@ -31,7 +31,12 @@ public class SummonerController : Controller
     [HttpGet("info")]
     public async Task<IActionResult> GetSummonerInfo(string gameName, string tagLine)
     {
-        var puuid = await _riotApiService.GetPuuidByRiotIdAsync(gameName, tagLine);
-        return Ok(puuid); // ← JSON 반환
+        string? puuid = await _riotApiService.GetPuuidByRiotIdAsync(gameName, tagLine);
+        if (puuid != null) 
+        {
+            List<string>? matchIds = await _riotApiService.GetMatchIdsByRiotPuuid(puuid, 1);
+            return Ok(matchIds);
+        }
+        else return NotFound("Summoner not found or puuid is null.");
     }
 }
