@@ -25,23 +25,20 @@ YOURGG는 Riot API를 사용하여 소환사의 최신 협곡 매치 데이터�
 Riot API와의 연동을 처리하며, 사용자의 입력에 따라 소환사의 최신 협곡 매치 데이터를 조회하고 이를 뷰에 전달하는 역할을 합니다.
 
 - `Search()`  
-
-![image](https://github.com/user-attachments/assets/8853f19a-2481-4228-9717-2485186a11f2)
   - **HTTP Method**: GET  
   - 사용자가 소환사 이름을 입력할 수 있는 검색 페이지를 렌더링합니다.
+![image](https://github.com/user-attachments/assets/8853f19a-2481-4228-9717-2485186a11f2)
 
 - `MatchDetail(string summonerName)`  
-
-![image](https://github.com/user-attachments/assets/7fa126fb-7af8-42a4-b191-4aefdaf29081)
   - **HTTP Method**: POST  
   - 사용자가 입력한 소환사 이름을 기반으로 최신 매치 데이터를 조회하고 뷰에 전달합니다.  
   - 소환사 또는 매치 데이터를 찾지 못할 경우 에러 메시지를 ViewBag에 담아 전달합니다.
+![image](https://github.com/user-attachments/assets/7fa126fb-7af8-42a4-b191-4aefdaf29081)
 
 - `Error()`  
-
-![image](https://github.com/user-attachments/assets/eab84ebd-ee1b-461f-a410-7654d7701a2c)
   - **HTTP Method**: GET  
   - 에러 발생 시 기본 오류 페이지를 반환합니다.
+![image](https://github.com/user-attachments/assets/eab84ebd-ee1b-461f-a410-7654d7701a2c)
 
 ---
 
