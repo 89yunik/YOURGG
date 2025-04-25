@@ -1,16 +1,76 @@
 ﻿@model YOURGG.Models.MatchDetailViewModel
+@{
+    ViewData["Title"] = "Match Detail";
+}
 
 @if (ViewBag.ErrorMessage != null)
 {
-    <p>@ViewBag.ErrorMessage</p>
-    <a href="@Url.Action("Search", "Summoner")">홈으로 이동</a>
+    <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+}
+else if (Model == null)
+{
+    <div class="alert alert-warning">매치 데이터를 불러올 수 없습니다.</div>
 }
 else
 {
-    <h2>@Model.SummonerName 님의 최근 경기</h2>
-    <p>챔피언: @Model.ChampionName</p>
-    <p>포지션: @Model.Role</p>
-    <p>결과: @Model.Result</p>
-    <p>K/D/A: @Model.Kills / @Model.Deaths / @Model.Assists</p>
-    <p>게임 모드: @Model.GameMode</p>
+    <div style="max-width: 700px;">
+        <div class="d-flex align-items-center mb-2">
+            <img src="@Model.ChampionImgUrl" alt="챔피언" width="80" height="80" class="me-3 rounded">
+            <div>
+                <h4 class="mb-1">@Model.SummonerName</h4>
+                <small>@Model.GameDate | @Model.GameType | @Model.GameDuration</small><br />
+                <span class="badge @(Model.Result == "WIN" ? "bg-success" : "bg-danger")">@Model.Result</span>
+            </div>
+        </div>
+
+        <div class="row mb-2">
+            <div class="col">
+                <strong>KDA:</strong> @Model.Kills / @Model.Deaths / @Model.Assists
+            </div>
+            <div class="col">
+                <strong>CS:</strong> @Model.TotalCS
+            </div>
+            <div class="col">
+                <strong>레벨:</strong> @Model.ChampLevel
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <strong>아이템</strong><br />
+                @if(Model.Items is not null)
+                @foreach (var itemUrl in Model.Items)
+                {
+                    if (!string.IsNullOrWhiteSpace(itemUrl))
+                    {
+                        <img src="@itemUrl" width="32" height="32" class="me-1" />
+                    }
+                }
+            </div>
+            <div class="col">
+                <strong>소환사 주문</strong><br />
+                @if(Model.Spells is not null)
+                @foreach (var spellUrl in Model.Spells)
+                {
+                    <img src="@spellUrl" width="32" height="32" class="me-1" />
+                }
+            </div>
+        </div>
+
+        <div>
+            <strong>플레이어</strong>
+            <div class="row mt-2">
+                @if (Model.Participants != null)
+                {
+                    @foreach (var participant in Model.Participants)
+                    {
+                        <div class="col-6 d-flex align-items-center mb-1">
+                            <img src="@participant[0]" alt="챔피언" width="32" height="32" class="me-2" />
+                            <span>@participant[1]</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
 }

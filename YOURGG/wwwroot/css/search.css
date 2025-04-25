@@ -1,0 +1,11 @@
+#search-container {
+    align-items: center;
+    display: inline-flex;
+    width: 457px;
+}
+
+#search-summoner-name {
+    border: 0;
+    width: 407px;
+    height: 44px;
+}
