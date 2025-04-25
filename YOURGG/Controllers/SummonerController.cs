@@ -24,13 +24,13 @@ public class SummonerController : Controller
 
         if (!result.IsSummonerFound)
         {
-            ViewBag.ErrorMessage = "해당 소환사를 찾을 수 없습니다.";
+            ViewBag.ErrorMessage = "소환사를 찾을 수 없습니다.";
             return View(new MatchDetailViewModel());
         }
 
         if (!result.IsMatchFound)
         {
-            ViewBag.ErrorMessage = "최근 협곡 매치 정보를 찾을 수 없습니다.";
+            ViewBag.ErrorMessage = "매치 데이터를 불러올 수 없습니다.";
             return View(new MatchDetailViewModel { SummonerName = summonerName });
         }
 

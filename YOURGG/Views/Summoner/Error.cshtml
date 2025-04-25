@@ -1,7 +1,7 @@
 @{
     ViewData["Title"] = "오류 발생";
 }
-
-<h2>문제가 발생했습니다.</h2>
-<p>죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.</p>
-<a href="@Url.Action("Search", "Summoner")">검색 페이지로 돌아가기</a>
+<div>
+    <p>죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.</p>
+    <a class="btn btn-light" href="@Url.Action("Search", "Summoner")">검색 페이지로 돌아가기</a>
+</div>
