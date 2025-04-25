@@ -71,7 +71,7 @@ Riot API와 통신을 담당하는 서비스로, 주어진 소환사 이름에 �
 | `Items` | 아이템 이미지 URL 리스트 |
 | `Kills`, `Deaths`, `Assists` | K/D/A |
 | `TotalCS` | 총 CS |
-| `GameType` | 게임 타입(솔로랭크/자유랭크/일반반) |
+| `GameType` | 게임 타입(솔로랭크/자유랭크/일반) |
 
 ---
 
