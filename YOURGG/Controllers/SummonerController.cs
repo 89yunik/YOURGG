@@ -30,7 +30,7 @@ public class SummonerController : Controller
 
         if (!result.IsMatchFound)
         {
-            ViewBag.ErrorMessage = "매치 정보를 찾을 수 없습니다.";
+            ViewBag.ErrorMessage = "매치 데이터를 불러올 수 없습니다.";
             return View(new MatchDetailViewModel { SummonerName = summonerName });
         }
 
