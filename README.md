@@ -121,6 +121,11 @@ dotnet run
 ```bash
 http://localhost:{port}/summoner/search
 ```
+## 개발 환경
+
+- .NET 9.0 SDK 이상이 필요합니다.
+- Visual Studio 2022 이상 버전에서 .NET 9.0을 지원합니다. 최신 버전의 Visual Studio가 설치되어 있어야 합니다.
+- Visual Studio에서 .NET 9.0 프로젝트를 여는 경우, 필요한 SDK가 자동으로 감지됩니다. 만약 SDK가 감지되지 않는다면 [공식 .NET 사이트](https://dotnet.microsoft.com/download)에서 최신 SDK를 설치해 주세요.
 
 ## 라이센스
 이 프로젝트는 MIT License를 따릅니다.
