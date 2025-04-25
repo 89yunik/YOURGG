@@ -38,6 +38,7 @@ else
         <div class="row mb-3">
             <div class="col">
                 <strong>아이템</strong><br />
+                @if(Model.Items is not null)
                 @foreach (var itemUrl in Model.Items)
                 {
                     if (!string.IsNullOrWhiteSpace(itemUrl))
@@ -48,6 +49,7 @@ else
             </div>
             <div class="col">
                 <strong>소환사 주문</strong><br />
+                @if(Model.Spells is not null)
                 @foreach (var spellUrl in Model.Spells)
                 {
                     <img src="@spellUrl" width="32" height="32" class="me-1" />
