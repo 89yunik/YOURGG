@@ -66,12 +66,12 @@ Riot API와 통신을 담당하는 서비스로, 주어진 소환사 이름에 �
 | `ChampionImgUrl` | 챔피언 이미지 URL |
 | `ChampLevel` | 챔피언 레벨 |
 | `Result` | 승리/패배 여부 |
-| `Participants` | 참가자 리스트 |
+| `Participants` | 플레이어 리스트 |
 | `Spells` | 사용한 소환사 주문 이미지 URL 리스트 |
 | `Items` | 아이템 이미지 URL 리스트 |
 | `Kills`, `Deaths`, `Assists` | K/D/A |
 | `TotalCS` | 총 CS |
-| `GameType` | 게임 타입 |
+| `GameType` | 게임 타입(솔로랭크/자유랭크/일반반) |
 
 ---
 
