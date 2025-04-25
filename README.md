@@ -93,7 +93,7 @@ Riot API와 통신을 담당하는 서비스로, 주어진 소환사 이름에 �
 
 ## 실행 방법
 
-1. **프로젝트 클론**
+### 1. **프로젝트 클론**
 
 ```bash
 git clone https://github.com/yourgg/yourgg.git
