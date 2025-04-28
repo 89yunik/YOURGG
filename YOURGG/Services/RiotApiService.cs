@@ -9,143 +9,50 @@ namespace YOURGG.Services
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _cache;
         private readonly string _riotApiKey;
-        private readonly string ddragonUrl = "https://ddragon.leagueoflegends.com";
+        private readonly string _ddragonUrl = "https://ddragon.leagueoflegends.com";
+        private readonly string _riotApiAsiaUrl = "https://asia.api.riotgames.com";
+        private readonly Dictionary<int, string> _queueIdGameType = new Dictionary<int, string>
+        {
+            { 420, "솔로랭크" },
+            { 440, "자유랭크" },
+            { 400, "일반" }
+        };
 
         public RiotApiService(HttpClient httpClient, IConfiguration configuration, IMemoryCache cache)
         {
             _httpClient = httpClient;
             _cache = cache;
             _riotApiKey = configuration["RiotApiKey"] ?? throw new ArgumentNullException("RiotApiKey must be provided.");
+            _httpClient.DefaultRequestHeaders.Add("X-Riot-Token", _riotApiKey);
         }
+
         public async Task<MatchDetailResult> GetLatestLiftMatchDetailBySummonerNameAsync(string summonerName)
         {
-            MatchDetailResult result = new MatchDetailResult();
+            var result = new MatchDetailResult();
 
-            try 
+            try
             {
-                // 캐시 확인
-                if (_cache.TryGetValue(summonerName, out MatchDetailViewModel? cachedMatch))
-                {
-                    result.IsSummonerFound = true;
-                    result.IsMatchFound = true;
-                    result.MatchDetail = cachedMatch;
-                    return result;
-                }
+                if (TryGetFromCache(summonerName, out var cachedMatch) && cachedMatch is not null) 
+                    return BuildResultFromCache(cachedMatch);
 
-                string latestVersion = await GetLatestVersionAsync() ?? "15.8.1";
+                if (!IsValidSummonerName(summonerName)) return result;
 
-                // Riot API
-                string riotApiBaseUrl = "https://asia.api.riotgames.com";
-                string riotImgUrl = $"{ddragonUrl}/cdn/{latestVersion}/img";
-                _httpClient.DefaultRequestHeaders.Add("X-Riot-Token", _riotApiKey);
-
-                // 1. 소환사 ID 조회
-                if (!summonerName.Contains("#")) return result;
-                
-                string? encodedSummonerName = summonerName.Replace("#", "/");
-                string getPuuidByRiotIdUrl = $"{riotApiBaseUrl}/riot/account/v1/accounts/by-riot-id/{encodedSummonerName}";
-                JsonElement summonerRes = await _httpClient.GetFromJsonAsync<JsonElement>(getPuuidByRiotIdUrl);
-                string? puuid = summonerRes.GetProperty("puuid").GetString();
-                
-                if (string.IsNullOrEmpty(puuid)) return result;
+                var latestVersion = await GetLatestVersionAsync() ?? "15.8.1";
+                var puuid = await GetPuuidAsync(summonerName);
+                if (puuid == null) return result;
                 result.IsSummonerFound = true;
 
-                // 2. 매치 리스트 조회
-                List<string> allMatchIds = new List<string>();
+                var latestMatchId = await GetLatestMatchIdAsync(puuid);
+                if (latestMatchId == null) return result;
 
-                int count = 1;
-                Dictionary<int, string> queueIdGameType = new Dictionary<int, string>
-                {
-                    { 420, "솔로랭크" },
-                    { 440, "자유랭크" },
-                    { 400, "일반" }
-                };
-                List<int> queueIds = queueIdGameType.Keys.ToList();
-                string getMatchIdsByRiotPuuidUrl = $"{riotApiBaseUrl}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}";
-                
-                var tasks = queueIds.Select(queueId =>
-                    _httpClient.GetFromJsonAsync<string[]>($"{getMatchIdsByRiotPuuidUrl}&queue={queueId}")
-                ).ToList();
-                var results = await Task.WhenAll(tasks);
-
-                foreach (var matchIds in results)
-                {
-                    if (matchIds != null && matchIds.Length > 0) allMatchIds.AddRange(matchIds);
-                }
-
-                string? latestMatchId = allMatchIds.Distinct().OrderByDescending(id => id).FirstOrDefault();
-
-                if (allMatchIds.Count == 0 || latestMatchId is null) return result;
-                // 3. 매치 상세 조회
-                string getLatestSummonersLiftMatchDetailUrl = $"{riotApiBaseUrl}/lol/match/v5/matches/{latestMatchId}";
-                JsonElement match = await _httpClient.GetFromJsonAsync<JsonElement>(getLatestSummonersLiftMatchDetailUrl);
-
-                JsonElement rawMatchDetail = match.GetProperty("info");
-
-                JsonElement.ArrayEnumerator rawParticipants = rawMatchDetail.GetProperty("participants").EnumerateArray();
-
-                JsonElement summonerData = rawParticipants.First(p => p.GetProperty("puuid").GetString() == puuid);
-
+                var matchInfo = await GetMatchInfoAsync(latestMatchId);
+                if (matchInfo == null) return result;
                 result.IsMatchFound = true;
 
-                int totalMinionsKilled = summonerData.GetProperty("totalMinionsKilled").GetInt32();
-                int neutralMinionsKilled = summonerData.GetProperty("neutralMinionsKilled").GetInt32();
-                int totalCS = totalMinionsKilled + neutralMinionsKilled;
-
-                long gameStartTimestamp = rawMatchDetail.GetProperty("gameStartTimestamp").GetInt64();
-                string gameDate = DateTimeOffset.FromUnixTimeMilliseconds(gameStartTimestamp).DateTime.ToString("MM/dd");
-
-                string gameDuration = TimeSpan.FromSeconds(rawMatchDetail.GetProperty("gameDuration").GetInt32()).ToString(@"mm\:ss");
-                List<string> items = new List<string>();
-                for(int i=0;i<7;i++) {
-                    int itemNum = summonerData.GetProperty($"item{i}").GetInt32();
-                    string itemImgUrl = itemNum>0 ? $"{riotImgUrl}/item/{itemNum}.png" : "";
-                    items.Add(itemImgUrl);
-                }
-
-                List<string> spellImgUrls = new List<string>();
-                for(int i=1;i<3;i++){
-                    int spellId = summonerData.GetProperty($"summoner{i}Id").GetInt32();
-                    string? spellImgUrl = await GetSpellImageUrlAsync(spellId, latestVersion);
-                    if(spellImgUrl is not null) spellImgUrls.Add(spellImgUrl);
-                }
-
-                string? rawChampionName = summonerData.GetProperty("championName").GetString();
-                string championImgUrl = $"{riotImgUrl}/champion/{rawChampionName}.png";
-
-                List<List<string>> participants = new List<List<string>>();
-
-                foreach (JsonElement rawParticipant in rawParticipants)
-                {
-                    if (rawParticipant.TryGetProperty("championName", out JsonElement championName) && 
-                    rawParticipant.TryGetProperty("riotIdGameName", out JsonElement riotIdGameName))
-                    {
-                        string champImgUrl = $"{riotImgUrl}/champion/{championName}.png";
-                        List<string>? participant = new List<string>{ champImgUrl, riotIdGameName.GetString() };
-                        participants.Add(participant);
-                    }
-                }
-
-                MatchDetailViewModel matchDetail = new MatchDetailViewModel
-                {
-                    GameDate = gameDate,
-                    GameDuration = gameDuration,
-                    SummonerName = summonerData.GetProperty("riotIdGameName").GetString(),
-                    ChampionImgUrl = championImgUrl,
-                    ChampLevel = summonerData.GetProperty("champLevel").GetInt32(),
-                    Participants = participants,
-                    Spells = spellImgUrls,
-                    Items = items,
-                    Result = summonerData.GetProperty("win").GetBoolean() ? "WIN" : "LOSS",
-                    Kills = summonerData.GetProperty("kills").GetInt32(),
-                    Deaths = summonerData.GetProperty("deaths").GetInt32(),
-                    Assists = summonerData.GetProperty("assists").GetInt32(),
-                    TotalCS = totalCS,
-                    GameType = queueIdGameType[rawMatchDetail.GetProperty("queueId").GetInt32()]
-                };
-
+                var matchDetail = await BuildMatchDetailViewModelAsync(matchInfo.Value, puuid, latestVersion);
                 result.MatchDetail = matchDetail;
-                _cache.Set(summonerName, matchDetail, TimeSpan.FromMinutes(5)); // 캐시 만료 시간 설정
+
+                SetCache(summonerName, matchDetail);
 
                 return result;
             }
@@ -156,28 +63,157 @@ namespace YOURGG.Services
             }
         }
 
-        public async Task<string?> GetLatestVersionAsync()
+        private bool TryGetFromCache(string summonerName, out MatchDetailViewModel? cachedMatch)
         {
-            var url = $"{ddragonUrl}/api/versions.json";
-            var response = await _httpClient.GetAsync(url);
+            return _cache.TryGetValue(summonerName, out cachedMatch);
+        }
 
-            if (response.IsSuccessStatusCode)
+        private void SetCache(string summonerName, MatchDetailViewModel matchDetail)
+        {
+            _cache.Set(summonerName, matchDetail, TimeSpan.FromMinutes(5));
+        }
+
+        private MatchDetailResult BuildResultFromCache(MatchDetailViewModel cachedMatch)
+        {
+            return new MatchDetailResult
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var versions = JsonSerializer.Deserialize<List<string>>(json);
+                IsSummonerFound = true,
+                IsMatchFound = true,
+                MatchDetail = cachedMatch
+            };
+        }
 
-                return versions?.FirstOrDefault(); // 최신 버전은 항상 첫 번째
+        private bool IsValidSummonerName(string summonerName)
+        {
+            return summonerName.Contains("#");
+        }
+
+        private async Task<string?> GetPuuidAsync(string summonerName)
+        {
+            var encodedName = summonerName.Replace("#", "/");
+            var url = $"{_riotApiAsiaUrl}/riot/account/v1/accounts/by-riot-id/{encodedName}";
+            var response = await GetJsonAsync(url);
+            return response?.GetProperty("puuid").GetString();
+        }
+
+        private async Task<string?> GetLatestMatchIdAsync(string puuid)
+        {
+            var tasks = _queueIdGameType.Keys.Select(queueId =>
+                GetJsonAsync($"{_riotApiAsiaUrl}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=1&queue={queueId}")
+            );
+            var results = await Task.WhenAll(tasks);
+
+            var allMatchIds = results // [ ["KR_1", "KR_2"], ["KR_3"], ["KR_4", "KR_5"] ]
+                .Where(r => r != null)
+                .SelectMany(r => r!.Value.EnumerateArray().Select(x => x.GetString())) // flat : [ "KR_1", "KR_2", "KR_3", "KR_4", "KR_5" ]
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .OrderByDescending(id => id)
+                .FirstOrDefault();
+
+            return allMatchIds;
+        }
+
+        private async Task<JsonElement?> GetMatchInfoAsync(string matchId)
+        {
+            var url = $"{_riotApiAsiaUrl}/lol/match/v5/matches/{matchId}";
+            return (await GetJsonAsync(url))?.GetProperty("info");
+        }
+
+        private async Task<MatchDetailViewModel> BuildMatchDetailViewModelAsync(JsonElement matchInfo, string puuid, string version)
+        {
+            var participants = matchInfo.GetProperty("participants");
+            var summoner = participants.EnumerateArray().FirstOrDefault(p => p.GetProperty("puuid").GetString() == puuid);
+
+            var riotImgUrl = $"{_ddragonUrl}/cdn/{version}/img";
+
+            var matchDetail = new MatchDetailViewModel
+            {
+                GameDate = FormatGameDate(matchInfo.GetProperty("gameStartTimestamp").GetInt64()),
+                GameDuration = FormatGameDuration(matchInfo.GetProperty("gameDuration").GetInt32()),
+                SummonerName = summoner.GetProperty("riotIdGameName").GetString(),
+                ChampionImgUrl = $"{riotImgUrl}/champion/{summoner.GetProperty("championName").GetString()}.png",
+                ChampLevel = summoner.GetProperty("champLevel").GetInt32(),
+                Participants = BuildParticipants(participants, riotImgUrl),
+                Spells = await BuildSpellsAsync(summoner, version),
+                Items = BuildItems(summoner, riotImgUrl),
+                Result = summoner.GetProperty("win").GetBoolean() ? "WIN" : "LOSS",
+                Kills = summoner.GetProperty("kills").GetInt32(),
+                Deaths = summoner.GetProperty("deaths").GetInt32(),
+                Assists = summoner.GetProperty("assists").GetInt32(),
+                TotalCS = GetTotalCS(summoner),
+                GameType = _queueIdGameType[matchInfo.GetProperty("queueId").GetInt32()]
+            };
+
+            return matchDetail;
+        }
+
+        private List<List<string>> BuildParticipants(JsonElement participants, string riotImgUrl)
+        {
+            return participants.EnumerateArray()
+                .Select(p => new List<string> {
+                    $"{riotImgUrl}/champion/{p.GetProperty("championName").GetString()}.png",
+                    p.GetProperty("riotIdGameName").GetString() ?? ""
+                })
+                .ToList();
+        }
+
+        private async Task<List<string>> BuildSpellsAsync(JsonElement summoner, string version)
+        {
+            var spells = new List<string>();
+
+            for (int i = 1; i <= 2; i++)
+            {
+                var spellId = summoner.GetProperty($"summoner{i}Id").GetInt32();
+                var spellUrl = await GetSpellImageUrlAsync(spellId, version);
+                if (spellUrl != null)
+                    spells.Add(spellUrl);
             }
 
-            return null;
+            return spells;
+        }
+
+        private List<string> BuildItems(JsonElement summoner, string riotImgUrl)
+        {
+            var items = new List<string>();
+
+            for (int i = 0; i < 7; i++)
+            {
+                var itemId = summoner.GetProperty($"item{i}").GetInt32();
+                items.Add(itemId > 0 ? $"{riotImgUrl}/item/{itemId}.png" : "");
+            }
+
+            return items;
+        }
+
+        private int GetTotalCS(JsonElement summoner)
+        {
+            return summoner.GetProperty("totalMinionsKilled").GetInt32() +
+                   summoner.GetProperty("neutralMinionsKilled").GetInt32();
+        }
+
+        private string FormatGameDate(long timestamp)
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(timestamp).DateTime.ToString("MM/dd");
+        }
+
+        private string FormatGameDuration(int seconds)
+        {
+            return TimeSpan.FromSeconds(seconds).ToString(@"mm\:ss");
+        }
+
+        public async Task<string?> GetLatestVersionAsync()
+        {
+            var response = await GetJsonAsync($"{_ddragonUrl}/api/versions.json");
+            return response?.EnumerateArray().FirstOrDefault().GetString();
         }
 
         public async Task<string?> GetSpellImageUrlAsync(int spellId, string version)
         {
-            var url = $"{ddragonUrl}/cdn/{version}/data/ko_KR/summoner.json";
-            var json = await _httpClient.GetStringAsync(url);
-            var doc = JsonDocument.Parse(json);
-            var spells = doc.RootElement.GetProperty("data");
+            var response = await GetJsonAsync($"{_ddragonUrl}/cdn/{version}/data/ko_KR/summoner.json");
+            if (response == null) return null;
+
+            var spells = response.Value.GetProperty("data");
 
             foreach (var spell in spells.EnumerateObject())
             {
@@ -185,11 +221,19 @@ namespace YOURGG.Services
                 if (value.GetProperty("key").GetString() == spellId.ToString())
                 {
                     var imageName = value.GetProperty("image").GetProperty("full").GetString();
-                    return $"{ddragonUrl}/cdn/{version}/img/spell/{imageName}";
+                    return $"{_ddragonUrl}/cdn/{version}/img/spell/{imageName}";
                 }
             }
-
             return null;
+        }
+
+        private async Task<JsonElement?> GetJsonAsync(string url)
+        {
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonDocument.Parse(content).RootElement;
         }
     }
 }
