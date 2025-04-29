@@ -56,9 +56,24 @@ namespace YOURGG.Services
 
                 return result;
             }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[HTTP ERROR] {ex.Message}");
+                return result;
+            }
+            catch (JsonException ex)
+            {
+                Console.Error.WriteLine($"[JSON PARSE ERROR] {ex.Message}");
+                return result;
+            }
+            catch (ArgumentNullException ex)
+            {
+                Console.Error.WriteLine($"[CONFIG ERROR] {ex.Message}");
+                return result;
+            }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error fetching match details: {ex.Message}");
+                Console.Error.WriteLine($"[UNEXPECTED ERROR] {ex.Message}");
                 return result;
             }
         }
