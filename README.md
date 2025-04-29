@@ -66,6 +66,10 @@ Riot API와 통신을 담당하는 서비스로, 주어진 소환사 이름에 �
   - 캐시에 소환사 전적 데이터가 존재하는지 확인
   - 존재할 경우 cachedMatch로 반환
 
+- `IsValidSummonerName(string summonerName)`
+
+  - 소환사명이 #을 포함하는지 확인하여 유효성 검사
+
 - `GetPuuidAsync(string summonerName)`
 
   - Riot ID (게임이름#태그) → puuid 조회
