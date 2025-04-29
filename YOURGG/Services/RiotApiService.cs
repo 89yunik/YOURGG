@@ -11,6 +11,8 @@ namespace YOURGG.Services
         private readonly string _riotApiKey;
         private readonly string _ddragonUrl = "https://ddragon.leagueoflegends.com";
         private readonly string _riotApiAsiaUrl = "https://asia.api.riotgames.com";
+        private readonly string _riotApiHeader = "X-Riot-Token";
+        private readonly string _riotApiVersion = "15.8.1";
         private readonly Dictionary<int, string> _queueIdGameType = new Dictionary<int, string>
         {
             { 420, "솔로랭크" },
@@ -23,7 +25,7 @@ namespace YOURGG.Services
             _httpClient = httpClient;
             _cache = cache;
             _riotApiKey = configuration["RiotApiKey"] ?? throw new ArgumentNullException("RiotApiKey must be provided.");
-            _httpClient.DefaultRequestHeaders.Add("X-Riot-Token", _riotApiKey);
+            _httpClient.DefaultRequestHeaders.Add(_riotApiHeader, _riotApiKey);
         }
 
         public async Task<MatchDetailResult> GetLatestLiftMatchDetailBySummonerNameAsync(string summonerName)
@@ -32,33 +34,55 @@ namespace YOURGG.Services
 
             try
             {
+                // 캐시 확인
                 if (TryGetFromCache(summonerName, out var cachedMatch) && cachedMatch is not null) 
                     return BuildResultFromCache(cachedMatch);
 
+                // 소환사명 구조 확인 - # 포함 여부
                 if (!IsValidSummonerName(summonerName)) return result;
 
-                var latestVersion = await GetLatestVersionAsync() ?? "15.8.1";
+                // nickname -> puuid 조회
+                var latestVersion = await GetLatestVersionAsync() ?? _riotApiVersion;
                 var puuid = await GetPuuidAsync(summonerName);
                 if (puuid == null) return result;
                 result.IsSummonerFound = true;
 
+                // puuid -> 최신 매치 id 조회
                 var latestMatchId = await GetLatestMatchIdAsync(puuid);
                 if (latestMatchId == null) return result;
 
+                // 최신 매치 id -> 매치 정보 조회
                 var matchInfo = await GetMatchInfoAsync(latestMatchId);
                 if (matchInfo == null) return result;
                 result.IsMatchFound = true;
 
+                // 매치 정보 내 필요한 정보 추출
                 var matchDetail = await BuildMatchDetailViewModelAsync(matchInfo.Value, puuid, latestVersion);
                 result.MatchDetail = matchDetail;
 
+                // 캐싱
                 SetCache(summonerName, matchDetail);
 
                 return result;
             }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[HTTP ERROR] {ex.Message}");
+                return result;
+            }
+            catch (JsonException ex)
+            {
+                Console.Error.WriteLine($"[JSON PARSE ERROR] {ex.Message}");
+                return result;
+            }
+            catch (ArgumentNullException ex)
+            {
+                Console.Error.WriteLine($"[CONFIG ERROR] {ex.Message}");
+                return result;
+            }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error fetching match details: {ex.Message}");
+                Console.Error.WriteLine($"[UNEXPECTED ERROR] {ex.Message}");
                 return result;
             }
         }
@@ -66,11 +90,6 @@ namespace YOURGG.Services
         private bool TryGetFromCache(string summonerName, out MatchDetailViewModel? cachedMatch)
         {
             return _cache.TryGetValue(summonerName, out cachedMatch);
-        }
-
-        private void SetCache(string summonerName, MatchDetailViewModel matchDetail)
-        {
-            _cache.Set(summonerName, matchDetail, TimeSpan.FromMinutes(5));
         }
 
         private MatchDetailResult BuildResultFromCache(MatchDetailViewModel cachedMatch)
@@ -107,11 +126,13 @@ namespace YOURGG.Services
                 .Where(r => r != null)
                 .SelectMany(r => r!.Value.EnumerateArray().Select(x => x.GetString())) // flat : [ "KR_1", "KR_2", "KR_3", "KR_4", "KR_5" ]
                 .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
+                .Distinct();
+
+            var recentMatchId = allMatchIds
                 .OrderByDescending(id => id)
                 .FirstOrDefault();
 
-            return allMatchIds;
+            return recentMatchId;
         }
 
         private async Task<JsonElement?> GetMatchInfoAsync(string matchId)
@@ -146,6 +167,11 @@ namespace YOURGG.Services
             };
 
             return matchDetail;
+        }
+
+        private void SetCache(string summonerName, MatchDetailViewModel matchDetail)
+        {
+            _cache.Set(summonerName, matchDetail, TimeSpan.FromMinutes(5));
         }
 
         private List<List<string>> BuildParticipants(JsonElement participants, string riotImgUrl)
